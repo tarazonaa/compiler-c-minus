@@ -1,0 +1,49 @@
+#PDF
+*.pdf
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build directories
+build/
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+
+# IDE-specific files (Visual Studio, CLion, VSCode, etc.)
+.vscode/
+.idea/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.cmake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+Makefile
+
+# Dependency
