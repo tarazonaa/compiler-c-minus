@@ -1,6 +1,6 @@
 /*
  * Este es el main para el programa de compilador. Actualmente en fase de
- * semántica. Copyright (C) 2025 Andrés Tarazona Solloa
+ * análisis semántico. Copyright (C) 2025 Andrés Tarazona Solloa
  * <andres.tara.so@gmail.com>
  * */
 
@@ -14,6 +14,8 @@
 #include "lexer.hpp"
 #include "parser.cpp"
 #include "parser.hpp"
+#include "semantic.cpp"
+#include "semantic.hpp"
 
 int main() {
   // Instanciamos el programa en un string, sobre el que iteraremos.
@@ -39,6 +41,12 @@ int main() {
   } else {
     tree->print(0);
   }
+
+  Semantic semantic(tree);
+
+  semantic.buildSymbolTable();
+
+  semantic.typeCheck();
 
   return 0;
 }
