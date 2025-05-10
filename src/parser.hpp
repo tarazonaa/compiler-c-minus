@@ -1,10 +1,13 @@
+/*
+ *  Copyright (c) 2025 Andres Tarazona Solloa <andres.tara.so@gmail.com>
+ *  Este es el header file del parser.
+ * */
 #pragma once
 
 #include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
-#include <variant>
 #include <vector>
 
 #include "lexer.hpp"

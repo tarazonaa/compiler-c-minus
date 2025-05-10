@@ -1,3 +1,7 @@
+/*
+ *  Copyright (c) 2025 Andres Tarazona Solloa <andres.tara.so@gmail.com>
+ *  Este es el header file del lexer.
+ * */
 #pragma once
 
 #include <stdexcept>

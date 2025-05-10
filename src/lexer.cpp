@@ -1,3 +1,7 @@
+/*
+ * Este archivo es para la implementación del lexer
+ * Copyright (C) 2025 Andrés Tarazona Solloa <andres.tara.so@gmail.com>
+ * */
 #include "lexer.hpp"
 
 #include <cctype>

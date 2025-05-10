@@ -1,3 +1,7 @@
+/*
+ * Este archivo es para la implementación del parser
+ * Copyright (C) 2025 Andrés Tarazona Solloa <andres.tara.so@gmail.com>
+ * */
 #include "parser.hpp"
 
 #include <iostream>
