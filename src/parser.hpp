@@ -25,8 +25,9 @@ class TreeNode {
   NodeKind nodekind;
 
  public:
-  TreeNode(NodeKind k) : nodekind(k) {};
+  TreeNode(NodeKind k, int line) : nodekind(k), lineno(line) {};
   virtual void print(int depth) = 0;
+  int getLineno() const;
   virtual ~TreeNode() = default;
 };
 
@@ -35,9 +36,9 @@ class ExpressionNode : public TreeNode {
   ExpressionKind expressionKind;
   ExpressionType expressionType;
 
-  void print(int depth);
-  ExpressionNode(ExpressionKind eKind)
-      : expressionKind(eKind), TreeNode(NodeKind::Expression) {};
+  void print(int depth) override;
+  ExpressionNode(ExpressionKind eKind, int line)
+      : expressionKind(eKind), TreeNode(NodeKind::Expression, line) {};
 };
 
 class ParamNode : public TreeNode {
@@ -46,8 +47,8 @@ class ParamNode : public TreeNode {
   std::string id;
 
   void print(int depth);
-  ParamNode(TokenType t, const std::string& i)
-      : TreeNode(NodeKind::Var), type(t), id(i) {}
+  ParamNode(TokenType t, const std::string& i, int line)
+      : TreeNode(NodeKind::Var, line), type(t), id(i) {}
 };
 
 class VarNode : public TreeNode {
@@ -56,7 +57,8 @@ class VarNode : public TreeNode {
   std::string id;
 
   void print(int depth);
-  VarNode(const std::string& name) : id(name), TreeNode(NodeKind::Var) {};
+  VarNode(const std::string& name, int line)
+      : id(name), TreeNode(NodeKind::Var, line) {};
 };
 
 class StatementNode : public TreeNode {
@@ -64,8 +66,8 @@ class StatementNode : public TreeNode {
   StatementKind statementKind;
 
   void print(int depth);
-  StatementNode(StatementKind sKind)
-      : statementKind(sKind), TreeNode(NodeKind::Statement) {};
+  StatementNode(StatementKind sKind, int line)
+      : statementKind(sKind), TreeNode(NodeKind::Statement, line) {};
   virtual ~StatementNode() = default;
 };
 
@@ -73,7 +75,8 @@ class ExpressionStatementNode : public StatementNode {
  public:
   std::unique_ptr<ExpressionNode> expression;
   void print(int depth);
-  ExpressionStatementNode() : StatementNode(StatementKind::Exp) {};
+  ExpressionStatementNode(int line)
+      : StatementNode(StatementKind::Exp, line) {};
 };
 
 class IterationStatementNode : public StatementNode {
@@ -81,7 +84,8 @@ class IterationStatementNode : public StatementNode {
   std::unique_ptr<ExpressionNode> expression;
   std::unique_ptr<StatementNode> statement;
   void print(int depth);
-  IterationStatementNode() : StatementNode(StatementKind::While) {};
+  IterationStatementNode(int line)
+      : StatementNode(StatementKind::While, line) {};
 };
 
 class SelectionStatementNode : public StatementNode {
@@ -90,14 +94,14 @@ class SelectionStatementNode : public StatementNode {
   std::unique_ptr<StatementNode> statement;
   std::unique_ptr<StatementNode> elseStatement;
   void print(int depth);
-  SelectionStatementNode() : StatementNode(StatementKind::If) {};
+  SelectionStatementNode(int line) : StatementNode(StatementKind::If, line) {};
 };
 
 class ReturnStatementNode : public StatementNode {
  public:
   std::unique_ptr<ExpressionNode> expression;
   void print(int depth);
-  ReturnStatementNode() : StatementNode(StatementKind::Return) {};
+  ReturnStatementNode(int line) : StatementNode(StatementKind::Return, line) {};
 };
 
 class CallNode : public ExpressionNode {
@@ -106,8 +110,8 @@ class CallNode : public ExpressionNode {
   std::vector<std::unique_ptr<ExpressionNode>> argsList;
   void print(int depth);
 
-  CallNode(const std::string& id)
-      : id(id), ExpressionNode(ExpressionKind::Simple) {};
+  CallNode(const std::string& id, int line)
+      : id(id), ExpressionNode(ExpressionKind::Simple, line) {};
 };
 
 class FactorNode : public ExpressionNode {
@@ -117,7 +121,7 @@ class FactorNode : public ExpressionNode {
   std::unique_ptr<VarNode> var;
   std::unique_ptr<CallNode> call;
   void print(int depth);
-  FactorNode() : ExpressionNode(ExpressionKind::Simple) {};
+  FactorNode(int line) : ExpressionNode(ExpressionKind::Simple, line) {};
 };
 
 class TermNode : public ExpressionNode {
@@ -127,7 +131,7 @@ class TermNode : public ExpressionNode {
   std::unique_ptr<TermNode> rightFactor;
   void print(int depth);
 
-  TermNode() : ExpressionNode(ExpressionKind::Simple) {};
+  TermNode(int line) : ExpressionNode(ExpressionKind::Simple, line) {};
 };
 
 class AdditiveExpressionNode : public ExpressionNode {
@@ -136,7 +140,8 @@ class AdditiveExpressionNode : public ExpressionNode {
   TokenType addop;
   std::unique_ptr<AdditiveExpressionNode> rightTerm;
   void print(int depth);
-  AdditiveExpressionNode() : ExpressionNode(ExpressionKind::Simple) {};
+  AdditiveExpressionNode(int line)
+      : ExpressionNode(ExpressionKind::Simple, line) {};
 };
 
 class SimpleExpressionNode : public ExpressionNode {
@@ -145,7 +150,8 @@ class SimpleExpressionNode : public ExpressionNode {
   TokenType relop;
   std::unique_ptr<AdditiveExpressionNode> additiveRight;
   void print(int depth);
-  SimpleExpressionNode() : ExpressionNode(ExpressionKind::Simple) {};
+  SimpleExpressionNode(int line)
+      : ExpressionNode(ExpressionKind::Simple, line) {};
 };
 
 class AssignmentExpressionNode : public ExpressionNode {
@@ -154,7 +160,8 @@ class AssignmentExpressionNode : public ExpressionNode {
   std::unique_ptr<ExpressionNode> simpleExpression;
   void print(int depth);
 
-  AssignmentExpressionNode() : ExpressionNode(ExpressionKind::Assign) {};
+  AssignmentExpressionNode(int line)
+      : ExpressionNode(ExpressionKind::Assign, line) {};
 };
 
 class DeclarationNode : public TreeNode {
@@ -165,8 +172,11 @@ class DeclarationNode : public TreeNode {
   void print(int depth);
 
   DeclarationNode(DeclarationKind dk, const std::string& i,
-                  const std::string& t)
-      : TreeNode(NodeKind::Declaration), declarationKind(dk), type(t), id(i) {}
+                  const std::string& t, int line)
+      : TreeNode(NodeKind::Declaration, line),
+        declarationKind(dk),
+        type(t),
+        id(i) {}
 
   virtual ~DeclarationNode() = default;
 };
@@ -176,8 +186,8 @@ class VarDeclarationNode : public DeclarationNode {
   std::optional<int> arraySize;
   void print(int depth);
 
-  VarDeclarationNode(const std::string& i, const std::string& t)
-      : DeclarationNode(DeclarationKind::VarD, i, t) {}
+  VarDeclarationNode(const std::string& i, const std::string& t, int line)
+      : DeclarationNode(DeclarationKind::VarD, i, t, line) {}
 };
 
 class CompoundStatementNode : public StatementNode {
@@ -186,7 +196,7 @@ class CompoundStatementNode : public StatementNode {
   std::vector<std::unique_ptr<StatementNode>> statements;
   void print(int depth);
 
-  CompoundStatementNode() : StatementNode(StatementKind::Comp) {}
+  CompoundStatementNode(int line) : StatementNode(StatementKind::Comp, line) {}
 };
 
 class FunDeclarationNode : public DeclarationNode {
@@ -195,8 +205,8 @@ class FunDeclarationNode : public DeclarationNode {
   std::unique_ptr<CompoundStatementNode> compoundStatement;
 
   void print(int depth);
-  FunDeclarationNode(const std::string& i, const std::string& t)
-      : DeclarationNode(DeclarationKind::FunD, i, t) {}
+  FunDeclarationNode(const std::string& i, const std::string& t, int line)
+      : DeclarationNode(DeclarationKind::FunD, i, t, line) {}
 };
 
 class ProgramNode : public TreeNode {
@@ -204,7 +214,7 @@ class ProgramNode : public TreeNode {
   std::vector<std::unique_ptr<DeclarationNode>> declarationList;
 
   void print(int depth);
-  ProgramNode() : TreeNode(NodeKind::Program) {};
+  ProgramNode(int line) : TreeNode(NodeKind::Program, line) {};
 };
 
 class ParserSyntaxError : public std::exception {

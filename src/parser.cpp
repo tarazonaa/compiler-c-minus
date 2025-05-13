@@ -9,6 +9,8 @@
 #include <optional>
 #include <vector>
 
+int TreeNode::getLineno() const { return lineno; }
+
 Parser::Parser(const std::string& filename, const std::string& prog, int pos,
                int progLong)
     : fileName(filename),
@@ -20,7 +22,7 @@ Parser::Parser(const std::string& filename, const std::string& prog, int pos,
 };
 
 TreeNode* Parser::parseProgram() {
-  auto node = std::make_unique<ProgramNode>();
+  auto node = std::make_unique<ProgramNode>(lineno);
 
   while (currToken != TokenType::ENDFILE) {
     node->declarationList.push_back(
@@ -31,7 +33,7 @@ TreeNode* Parser::parseProgram() {
 }
 
 CompoundStatementNode* Parser::parseCompoundStatement() {
-  auto node = std::make_unique<CompoundStatementNode>();
+  auto node = std::make_unique<CompoundStatementNode>(lineno);
   std::vector<std::unique_ptr<VarDeclarationNode>> varsList;
   std::vector<std::unique_ptr<StatementNode>> statementList;
 
@@ -59,7 +61,7 @@ CompoundStatementNode* Parser::parseCompoundStatement() {
 }
 
 VarNode* Parser::parseVar(const std::string& name) {
-  auto node = std::make_unique<VarNode>(name);
+  auto node = std::make_unique<VarNode>(name, lineno);
   if (currToken == TokenType::O_BRACKET) {
     match(TokenType::O_BRACKET);
     node->expression = std::unique_ptr<ExpressionNode>(parseExpression());
@@ -84,7 +86,7 @@ StatementNode* Parser::parseStatement() {
 }
 
 SelectionStatementNode* Parser::parseSelectionStatement() {
-  auto node = std::make_unique<SelectionStatementNode>();
+  auto node = std::make_unique<SelectionStatementNode>(lineno);
 
   match(TokenType::IF);
   match(TokenType::O_PAREN);
@@ -102,7 +104,7 @@ SelectionStatementNode* Parser::parseSelectionStatement() {
 }
 
 ReturnStatementNode* Parser::parseReturnStatement() {
-  auto node = std::make_unique<ReturnStatementNode>();
+  auto node = std::make_unique<ReturnStatementNode>(lineno);
   match(TokenType::RETURN);
   if (currToken != TokenType::COMMA) {
     node->expression = std::unique_ptr<ExpressionNode>(parseExpression());
@@ -113,7 +115,7 @@ ReturnStatementNode* Parser::parseReturnStatement() {
 }
 
 IterationStatementNode* Parser::parseIterationStatement() {
-  auto node = std::make_unique<IterationStatementNode>();
+  auto node = std::make_unique<IterationStatementNode>(lineno);
   match(TokenType::WHILE);
   match(TokenType::O_PAREN);
   node->expression = std::unique_ptr<ExpressionNode>(parseExpression());
@@ -123,7 +125,7 @@ IterationStatementNode* Parser::parseIterationStatement() {
 }
 
 ExpressionStatementNode* Parser::parseExpressionStatement() {
-  auto node = std::make_unique<ExpressionStatementNode>();
+  auto node = std::make_unique<ExpressionStatementNode>(lineno);
   if (currToken != TokenType::SEMI) {
     node->expression = std::unique_ptr<ExpressionNode>(parseExpression());
   }
@@ -134,7 +136,7 @@ ExpressionStatementNode* Parser::parseExpressionStatement() {
 ExpressionNode* Parser::parseExpression() { return parseSimpleExpression(); }
 
 AssignmentExpressionNode* Parser::parseAssignmentExpression() {
-  auto node = std::make_unique<AssignmentExpressionNode>();
+  auto node = std::make_unique<AssignmentExpressionNode>(lineno);
   node->var = std::unique_ptr<VarNode>(parseVar(currString));
   match(TokenType::ASSIGN);
   node->simpleExpression =
@@ -143,7 +145,7 @@ AssignmentExpressionNode* Parser::parseAssignmentExpression() {
 }
 
 ExpressionNode* Parser::parseSimpleExpression() {
-  auto node = std::make_unique<SimpleExpressionNode>();
+  auto node = std::make_unique<SimpleExpressionNode>(lineno);
   node->additiveLeft =
       std::unique_ptr<AdditiveExpressionNode>(parseAdditiveExpression());
   if (currToken == TokenType::ASSIGN) {
@@ -161,7 +163,7 @@ ExpressionNode* Parser::parseSimpleExpression() {
 }
 
 AdditiveExpressionNode* Parser::parseAdditiveExpression() {
-  auto node = std::make_unique<AdditiveExpressionNode>();
+  auto node = std::make_unique<AdditiveExpressionNode>(lineno);
   node->leftTerm = std::unique_ptr<TermNode>(parseTerm());
   if (currToken == TokenType::ADD || currToken == TokenType::SUB) {
     node->addop = currToken;
@@ -173,7 +175,7 @@ AdditiveExpressionNode* Parser::parseAdditiveExpression() {
 }
 
 TermNode* Parser::parseTerm() {
-  auto node = std::make_unique<TermNode>();
+  auto node = std::make_unique<TermNode>(lineno);
   node->leftFactor = std::unique_ptr<FactorNode>(parseFactor());
   if (currToken == TokenType::DIV || currToken == TokenType::TIMES) {
     node->mulop = currToken;
@@ -184,7 +186,7 @@ TermNode* Parser::parseTerm() {
 }
 
 FactorNode* Parser::parseFactor() {
-  auto node = std::make_unique<FactorNode>();
+  auto node = std::make_unique<FactorNode>(lineno);
   if (currToken == TokenType::O_PAREN) {
     match(TokenType::O_PAREN);
     node->expression = std::unique_ptr<ExpressionNode>(parseExpression());
@@ -195,7 +197,6 @@ FactorNode* Parser::parseFactor() {
     match(TokenType::ID);
 
     if (currToken == TokenType::O_PAREN) {
-      std::cout << "We are here" << std::endl;
       match(TokenType::O_PAREN);
       node->call = std::unique_ptr<CallNode>(parseCall(id));
       match(TokenType::C_PAREN);
@@ -211,7 +212,7 @@ FactorNode* Parser::parseFactor() {
 }
 
 CallNode* Parser::parseCall(const std::string& id) {
-  auto node = std::make_unique<CallNode>(id);
+  auto node = std::make_unique<CallNode>(id, lineno);
 
   node->argsList = parseArgs();
 
@@ -235,7 +236,7 @@ std::vector<std::unique_ptr<ExpressionNode>> Parser::parseArgs() {
 
 FunDeclarationNode* Parser::parseFunDeclaration(std::string& type,
                                                 std::string& id) {
-  auto node = std::make_unique<FunDeclarationNode>(type, id);
+  auto node = std::make_unique<FunDeclarationNode>(type, id, lineno);
   match(TokenType::O_PAREN);
   node->params = parseParams();
   match(TokenType::C_PAREN);
@@ -273,14 +274,14 @@ ParamNode* Parser::parseParam() {
     match(TokenType::ID);
   }
 
-  auto node = std::make_unique<ParamNode>(type, name);
+  auto node = std::make_unique<ParamNode>(type, name, lineno);
   return node.release();
 }
 
 VarDeclarationNode* Parser::parseVarDeclaration(std::string& type,
                                                 std::string& id) {
   // Pasamos a parsear la declaración de una variable
-  auto node = std::make_unique<VarDeclarationNode>(type, id);
+  auto node = std::make_unique<VarDeclarationNode>(type, id, lineno);
 
   if (currToken == TokenType::O_BRACKET) {
     match(TokenType::O_BRACKET);
@@ -311,14 +312,11 @@ DeclarationNode* Parser::parseDeclaration() {
 }
 
 void Parser::match(TokenType expected) {
-  std::cout << "Matching " << tokenTypeToString(expected)
-            << " with actual token: " << tokenTypeToString(currToken)
-            << std::endl;
   if (currToken == expected) {
-    auto [token, string, position] = lexer.getToken(true);
+    auto [token, string, position] = lexer.getToken(false);
     this->currString = string;
     this->currToken = token;
-    this->position = position;
+    this->lineno = position;
   } else {
     throw ParserSyntaxError("Expected token " + tokenTypeToString(expected) +
                             ", but got " + tokenTypeToString(currToken) +

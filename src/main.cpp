@@ -38,15 +38,12 @@ int main() {
 
   if (error) {
     std::cerr << "Parsing failed: " << error->what() << std::endl;
-  } else {
-    tree->print(0);
   }
 
   Semantic semantic(tree);
 
-  semantic.buildSymbolTable();
-
-  semantic.typeCheck();
+  // Helper function que hace todo el análisis (symbol table y type checking)
+  semantic.analyze();
 
   return 0;
 }
