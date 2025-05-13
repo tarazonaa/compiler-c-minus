@@ -186,7 +186,7 @@ class VarDeclarationNode : public DeclarationNode {
   std::optional<int> arraySize;
   void print(int depth);
 
-  VarDeclarationNode(const std::string& i, const std::string& t, int line)
+  VarDeclarationNode(const std::string& t, const std::string& i, int line)
       : DeclarationNode(DeclarationKind::VarD, i, t, line) {}
 };
 
@@ -205,7 +205,7 @@ class FunDeclarationNode : public DeclarationNode {
   std::unique_ptr<CompoundStatementNode> compoundStatement;
 
   void print(int depth);
-  FunDeclarationNode(const std::string& i, const std::string& t, int line)
+  FunDeclarationNode(const std::string& t, const std::string& i, int line)
       : DeclarationNode(DeclarationKind::FunD, i, t, line) {}
 };
 
@@ -238,6 +238,8 @@ class Parser {
   int position = 0;
   int programLength = 0;
   std::string fileName;
+
+  std::string mostRecentId;
 
   Lexer lexer;
 

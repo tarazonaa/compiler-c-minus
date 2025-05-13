@@ -137,7 +137,7 @@ ExpressionNode* Parser::parseExpression() { return parseSimpleExpression(); }
 
 AssignmentExpressionNode* Parser::parseAssignmentExpression() {
   auto node = std::make_unique<AssignmentExpressionNode>(lineno);
-  node->var = std::unique_ptr<VarNode>(parseVar(currString));
+  node->var = std::unique_ptr<VarNode>(parseVar(mostRecentId));
   match(TokenType::ASSIGN);
   node->simpleExpression =
       std::unique_ptr<ExpressionNode>(parseSimpleExpression());

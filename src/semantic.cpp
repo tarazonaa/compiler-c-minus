@@ -28,7 +28,9 @@ void SymbolTable::print() const {
 }
 
 void SymbolTable::insertNode(const std::string& name, int lineno) {
-  symbolTable[name].push_back(lineno);
+  if (!name.empty() && lineno > 0) {  // Only insert valid names and lines
+    symbolTable[name].push_back(lineno);
+  }
 }
 
 bool SymbolTable::find(const std::string& name) const {
@@ -41,12 +43,16 @@ void Semantic::buildSymbolTable() {
       symbolTable.insertNode(varDecl->id, varDecl->getLineno());
     } else if (auto* funDecl = dynamic_cast<FunDeclarationNode*>(node)) {
       symbolTable.insertNode(funDecl->id, funDecl->getLineno());
-    } else if (auto* varUsage = dynamic_cast<VarNode*>(node)) {
-      symbolTable.insertNode(varUsage->id, varUsage->getLineno());
+      for (auto& param : funDecl->params) {
+        symbolTable.insertNode(param->id, param->getLineno());
+      }
+    } else if (auto* varNode = dynamic_cast<VarNode*>(node)) {
+      symbolTable.insertNode(varNode->id, varNode->getLineno());
+    } else if (auto* callNode = dynamic_cast<CallNode*>(node)) {
+      symbolTable.insertNode(callNode->id, callNode->getLineno());
     }
   });
 }
-
 void Semantic::typeCheck() {
   traverse(
       tree,
@@ -61,13 +67,20 @@ void Semantic::typeCheck() {
 
 void Semantic::traverse(TreeNode* node, std::function<void(TreeNode*)> preOrder,
                         std::function<void(TreeNode*)> postOrder) {
+  if (!node) return;
+
   if (preOrder) preOrder(node);
+
   if (auto* program = dynamic_cast<ProgramNode*>(node)) {
     for (auto& child : program->declarationList) {
       traverse(child.get(), preOrder, postOrder);
     }
   } else if (auto* func = dynamic_cast<FunDeclarationNode*>(node)) {
+    for (auto& param : func->params) {
+      traverse(param.get(), preOrder, postOrder);
+    }
     traverse(func->compoundStatement.get(), preOrder, postOrder);
+  } else if (auto* varDecl = dynamic_cast<VarDeclarationNode*>(node)) {
   } else if (auto* compound = dynamic_cast<CompoundStatementNode*>(node)) {
     for (auto& child : compound->vars) {
       traverse(child.get(), preOrder, postOrder);
@@ -83,32 +96,56 @@ void Semantic::traverse(TreeNode* node, std::function<void(TreeNode*)> preOrder,
   } else if (auto* selectStmt = dynamic_cast<SelectionStatementNode*>(node)) {
     traverse(selectStmt->condition.get(), preOrder, postOrder);
     traverse(selectStmt->statement.get(), preOrder, postOrder);
-    traverse(selectStmt->elseStatement.get(), preOrder, postOrder);
+    if (selectStmt->elseStatement) {
+      traverse(selectStmt->elseStatement.get(), preOrder, postOrder);
+    }
   } else if (auto* returnStmt = dynamic_cast<ReturnStatementNode*>(node)) {
-    traverse(returnStmt->expression.get(), preOrder, postOrder);
+    if (returnStmt->expression) {
+      traverse(returnStmt->expression.get(), preOrder, postOrder);
+    }
   } else if (auto* assignExpr = dynamic_cast<AssignmentExpressionNode*>(node)) {
     traverse(assignExpr->var.get(), preOrder, postOrder);
     traverse(assignExpr->simpleExpression.get(), preOrder, postOrder);
+  } else if (auto* simpleExpr = dynamic_cast<SimpleExpressionNode*>(node)) {
+    traverse(simpleExpr->additiveLeft.get(), preOrder, postOrder);
+    if (simpleExpr->additiveRight) {
+      traverse(simpleExpr->additiveRight.get(), preOrder, postOrder);
+    }
   } else if (auto* addExpr = dynamic_cast<AdditiveExpressionNode*>(node)) {
     traverse(addExpr->leftTerm.get(), preOrder, postOrder);
-    traverse(addExpr->rightTerm.get(), preOrder, postOrder);
+    if (addExpr->rightTerm) {
+      traverse(addExpr->rightTerm.get(), preOrder, postOrder);
+    }
   } else if (auto* term = dynamic_cast<TermNode*>(node)) {
     traverse(term->leftFactor.get(), preOrder, postOrder);
-    traverse(term->rightFactor.get(), preOrder, postOrder);
+    if (term->rightFactor) {
+      traverse(term->rightFactor.get(), preOrder, postOrder);
+    }
   } else if (auto* factor = dynamic_cast<FactorNode*>(node)) {
-    traverse(factor->expression.get(), preOrder, postOrder);
-    traverse(factor->var.get(), preOrder, postOrder);
-    traverse(factor->call.get(), preOrder, postOrder);
+    if (factor->var) {
+      traverse(factor->var.get(), preOrder, postOrder);
+    } else if (factor->call) {
+      traverse(factor->call.get(), preOrder, postOrder);
+    } else if (factor->expression) {
+      traverse(factor->expression.get(), preOrder, postOrder);
+    }
   } else if (auto* call = dynamic_cast<CallNode*>(node)) {
     for (auto& arg : call->argsList) {
       traverse(arg.get(), preOrder, postOrder);
     }
   } else if (auto* var = dynamic_cast<VarNode*>(node)) {
-    traverse(var->expression.get(), preOrder, postOrder);
+    if (var->expression) {
+      traverse(var->expression.get(), preOrder, postOrder);
+    }
+  } else if (auto* param = dynamic_cast<ParamNode*>(node)) {
+  } else {
+    std::cerr << "Warning: Unknown node type in traversal: "
+              << typeid(*node).name() << std::endl;
   }
+
+  // Post-order processing
   if (postOrder) postOrder(node);
 }
-
 void Semantic::analyze() {
   buildSymbolTable();
   typeCheck();
