@@ -16,6 +16,8 @@
 #include "parser.hpp"
 #include "semantic.cpp"
 #include "semantic.hpp"
+#include "visitor.cpp"
+#include "visitor.hpp"
 
 int main() {
   // Instanciamos el programa en un string, sobre el que iteraremos.
@@ -40,7 +42,7 @@ int main() {
     std::cerr << "Parsing failed: " << error->what() << std::endl;
   }
 
-  Semantic semantic(tree);
+  Semantic semantic(std::move(tree));
 
   // Helper function que hace todo el análisis (symbol table y type checking)
   semantic.analyze();

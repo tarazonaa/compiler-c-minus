@@ -2,24 +2,45 @@
  *  Este archivo es para la implementación de la clase semantica
  *  Copyright (C) 2025 Andrés Tarazona Solloa <andres.tara.so@gmail.com>
  * */
+
 #include "semantic.hpp"
 
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
+#include <utility>
 
-void SymbolTable::print() const {
-  std::cout << "+----------------------+---------------------+\n";
-  std::cout << "| Symbol               | Line Numbers        |\n";
-  std::cout << "+----------------------+---------------------+\n";
+#include "parser.hpp"
+#include "visitor.hpp"
 
-  for (const auto& [name, lines] : symbolTable) {
-    std::cout << "| " << std::left << std::setw(20) << name << " | ";
+std::string typesToString(Types type) {
+  if (type == Types::INT) {
+    return "int";
+  }
+  return "void";
+}
+
+/*
+ *  Functiones para las tablas de simbolos simples
+ * */
+void Symbols::print() const {
+  std::cout
+      << "+------------------+-------------------+---------------------+\n";
+  std::cout
+      << "| Symbol           |   Types           | Line Numbers        |\n";
+  std::cout
+      << "+------------------+-------------------+---------------------+\n";
+
+  for (const auto& [name, info] : symbolTable) {
+    std::cout << "| " << std::left << std::setw(15) << name << " | ";
+    std::cout << std::left << std::setw(15)
+              << "type: " << typesToString(info.type) << std::setw(2) << "|";
 
     std::stringstream lineNumbers;
-    for (size_t i = 0; i < lines.size(); ++i) {
+    for (size_t i = 0; i < info.lines.size(); ++i) {
       if (i > 0) lineNumbers << ", ";
-      lineNumbers << lines[i];
+      lineNumbers << info.lines[i];
     }
 
     std::cout << std::left << std::setw(18) << lineNumbers.str() << " |\n";
@@ -27,129 +48,102 @@ void SymbolTable::print() const {
   std::cout << "+----------------------+---------------------+\n";
 }
 
-void SymbolTable::insertNode(const std::string& name, int lineno) {
-  if (!name.empty() && lineno > 0) {  // Only insert valid names and lines
-    symbolTable[name].push_back(lineno);
+void Symbols::insertNode(const std::string& name, int lineno) {
+  if (!name.empty() && lineno > 0) {
+    symbolTable[name].lines.push_back(lineno);
+  }
+}
+
+bool Symbols::find(const std::string& name) const {
+  return symbolTable.find(name) != symbolTable.end();
+}
+
+void Symbols::addUsage(const std::string& name, int lineno) {
+  symbolTable[name].lines.push_back(lineno);
+}
+
+/*
+ *  Funciones que tienen que ver con el semántico
+ * */
+void Semantic::buildSymbolTable(bool imprime) {
+  SymbolTableVisitor visitor(symbolTable);
+  visitor.visit(tree);
+}
+void Semantic::typeCheck(bool imprime) {
+  TypeCheckerVisitor visitor(symbolTable);
+  visitor.visit(tree);
+}
+
+void Semantic::analyze(bool imprime) {
+  buildSymbolTable(imprime);
+  symbolTable.print();
+  typeCheck(imprime);
+  std::cout << "Se ha logrado el typechecking correctamente." << std::endl;
+}
+
+Semantic::Semantic(std::unique_ptr<ProgramNode> tree) : tree(std::move(tree)) {
+  symbolTable = SymbolTable();
+}
+
+SymbolTable::SymbolTable() {
+  scopes.push_back(std::make_unique<Scope>("__global"));
+  globalScope = scopes.back().get();
+  currScope = globalScope;
+}
+
+void SymbolTable::insertNode(const std::string& name, int lineno, Types type) {
+  if (find(name)) {
+    currScope->insertNode(name, lineno, type);
+  }
+  currScope->insertNode(name, lineno, type);
+}
+
+void SymbolTable::insertNode(const std::string& name, int lineno, Types type,
+                             int size = 0) {
+  currScope->insertNode(name, lineno, type);
+  if (size > 0) {
+    currScope->symbolTable.symbolTable[name].isArray = true;
+    currScope->symbolTable.symbolTable[name].size = size;
+  }
+}
+
+void SymbolTable::print() const {
+  for (auto& scope : scopes) {
+    scope->printScope();
   }
 }
 
 bool SymbolTable::find(const std::string& name) const {
-  return symbolTable.find(name) != symbolTable.end();
+  return currScope->symbolTable.find(name);
 }
 
-void Semantic::buildSymbolTable() {
-  traverse(tree, nullptr, [this](TreeNode* node) {
-    if (auto* varDecl = dynamic_cast<VarDeclarationNode*>(node)) {
-      symbolTable.insertNode(varDecl->id, varDecl->getLineno());
-    } else if (auto* funDecl = dynamic_cast<FunDeclarationNode*>(node)) {
-      symbolTable.insertNode(funDecl->id, funDecl->getLineno());
-      for (auto& param : funDecl->params) {
-        symbolTable.insertNode(param->id, param->getLineno());
-      }
-    } else if (auto* varNode = dynamic_cast<VarNode*>(node)) {
-      symbolTable.insertNode(varNode->id, varNode->getLineno());
-    } else if (auto* callNode = dynamic_cast<CallNode*>(node)) {
-      symbolTable.insertNode(callNode->id, callNode->getLineno());
-    }
-  });
-}
-void Semantic::typeCheck() {
-  traverse(
-      tree,
-      [this](TreeNode* node) {
-        if (auto* assign = dynamic_cast<AssignmentExpressionNode*>(node)) {
-          if (!symbolTable.find(assign->var->id)) {
-          }
-        }
-      },
-      nullptr);
+/*
+ *  Funciones que tienen que ver con los scopes
+ * */
+Scope::Scope(const std::string& name) : name(name) {
+  std::vector<Scope*> children;
 }
 
-void Semantic::traverse(TreeNode* node, std::function<void(TreeNode*)> preOrder,
-                        std::function<void(TreeNode*)> postOrder) {
-  if (!node) return;
-
-  if (preOrder) preOrder(node);
-
-  if (auto* program = dynamic_cast<ProgramNode*>(node)) {
-    for (auto& child : program->declarationList) {
-      traverse(child.get(), preOrder, postOrder);
-    }
-  } else if (auto* func = dynamic_cast<FunDeclarationNode*>(node)) {
-    for (auto& param : func->params) {
-      traverse(param.get(), preOrder, postOrder);
-    }
-    traverse(func->compoundStatement.get(), preOrder, postOrder);
-  } else if (auto* varDecl = dynamic_cast<VarDeclarationNode*>(node)) {
-  } else if (auto* compound = dynamic_cast<CompoundStatementNode*>(node)) {
-    for (auto& child : compound->vars) {
-      traverse(child.get(), preOrder, postOrder);
-    }
-    for (auto& child : compound->statements) {
-      traverse(child.get(), preOrder, postOrder);
-    }
-  } else if (auto* exprStmt = dynamic_cast<ExpressionStatementNode*>(node)) {
-    traverse(exprStmt->expression.get(), preOrder, postOrder);
-  } else if (auto* iterStmt = dynamic_cast<IterationStatementNode*>(node)) {
-    traverse(iterStmt->expression.get(), preOrder, postOrder);
-    traverse(iterStmt->statement.get(), preOrder, postOrder);
-  } else if (auto* selectStmt = dynamic_cast<SelectionStatementNode*>(node)) {
-    traverse(selectStmt->condition.get(), preOrder, postOrder);
-    traverse(selectStmt->statement.get(), preOrder, postOrder);
-    if (selectStmt->elseStatement) {
-      traverse(selectStmt->elseStatement.get(), preOrder, postOrder);
-    }
-  } else if (auto* returnStmt = dynamic_cast<ReturnStatementNode*>(node)) {
-    if (returnStmt->expression) {
-      traverse(returnStmt->expression.get(), preOrder, postOrder);
-    }
-  } else if (auto* assignExpr = dynamic_cast<AssignmentExpressionNode*>(node)) {
-    traverse(assignExpr->var.get(), preOrder, postOrder);
-    traverse(assignExpr->simpleExpression.get(), preOrder, postOrder);
-  } else if (auto* simpleExpr = dynamic_cast<SimpleExpressionNode*>(node)) {
-    traverse(simpleExpr->additiveLeft.get(), preOrder, postOrder);
-    if (simpleExpr->additiveRight) {
-      traverse(simpleExpr->additiveRight.get(), preOrder, postOrder);
-    }
-  } else if (auto* addExpr = dynamic_cast<AdditiveExpressionNode*>(node)) {
-    traverse(addExpr->leftTerm.get(), preOrder, postOrder);
-    if (addExpr->rightTerm) {
-      traverse(addExpr->rightTerm.get(), preOrder, postOrder);
-    }
-  } else if (auto* term = dynamic_cast<TermNode*>(node)) {
-    traverse(term->leftFactor.get(), preOrder, postOrder);
-    if (term->rightFactor) {
-      traverse(term->rightFactor.get(), preOrder, postOrder);
-    }
-  } else if (auto* factor = dynamic_cast<FactorNode*>(node)) {
-    if (factor->var) {
-      traverse(factor->var.get(), preOrder, postOrder);
-    } else if (factor->call) {
-      traverse(factor->call.get(), preOrder, postOrder);
-    } else if (factor->expression) {
-      traverse(factor->expression.get(), preOrder, postOrder);
-    }
-  } else if (auto* call = dynamic_cast<CallNode*>(node)) {
-    for (auto& arg : call->argsList) {
-      traverse(arg.get(), preOrder, postOrder);
-    }
-  } else if (auto* var = dynamic_cast<VarNode*>(node)) {
-    if (var->expression) {
-      traverse(var->expression.get(), preOrder, postOrder);
-    }
-  } else if (auto* param = dynamic_cast<ParamNode*>(node)) {
-  } else {
-    std::cerr << "Warning: Unknown node type in traversal: "
-              << typeid(*node).name() << std::endl;
-  }
-
-  // Post-order processing
-  if (postOrder) postOrder(node);
-}
-void Semantic::analyze() {
-  buildSymbolTable();
-  typeCheck();
+void Scope::printScope() {
+  std::cout << "Imrpimiendo scope: " << name << std::endl;
   symbolTable.print();
 }
 
-Semantic::Semantic(TreeNode* tree) : tree(tree) {}
+void Scope::insertNode(const std::string& name, int lineno, Types type) {
+  symbolTable(std::make_pair(name, lineno));
+  symbolTable.symbolTable[name].type = type;
+}
+
+void Scope::addUsage(const std::string& name, int lineno) {
+  symbolTable += {name, lineno};
+}
+
+Types SymbolTable::getType(const std::string& name) {
+  Types type = currScope->symbolTable.symbolTable[name].type;
+  if (type == Types::INT) {
+    return type;
+  } else {
+    std::cerr << "Cannot index type of " << name << std::endl;
+  }
+  return Types::VOID;
+}

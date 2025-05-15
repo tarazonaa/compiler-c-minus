@@ -15,9 +15,11 @@
 enum NodeKind { Statement, Expression, Program, Var, Declaration };
 enum StatementKind { Exp, Comp, If, While, Return };
 enum ExpressionKind { Assign, Simple };
-enum ExpressionType { Void, Integer, Boolean };
+enum ExpressionType { Void, Integer };
 enum DeclarationKind { VarD, FunD };
 
+// Declaramos el "árbol" como clase template.
+template <typename Derived>
 class TreeNode {
  protected:
   int lineno;
@@ -26,22 +28,22 @@ class TreeNode {
 
  public:
   TreeNode(NodeKind k, int line) : nodekind(k), lineno(line) {};
-  virtual void print(int depth) = 0;
+
   int getLineno() const;
   virtual ~TreeNode() = default;
 };
 
-class ExpressionNode : public TreeNode {
+class ExpressionNode : public TreeNode<ExpressionNode> {
  public:
   ExpressionKind expressionKind;
   ExpressionType expressionType;
 
-  void print(int depth) override;
+  void print(int depth);
   ExpressionNode(ExpressionKind eKind, int line)
       : expressionKind(eKind), TreeNode(NodeKind::Expression, line) {};
 };
 
-class ParamNode : public TreeNode {
+class ParamNode : public TreeNode<ParamNode> {
  public:
   TokenType type;
   std::string id;
@@ -51,7 +53,7 @@ class ParamNode : public TreeNode {
       : TreeNode(NodeKind::Var, line), type(t), id(i) {}
 };
 
-class VarNode : public TreeNode {
+class VarNode : public TreeNode<VarNode> {
  public:
   std::unique_ptr<ExpressionNode> expression;
   std::string id;
@@ -61,7 +63,7 @@ class VarNode : public TreeNode {
       : id(name), TreeNode(NodeKind::Var, line) {};
 };
 
-class StatementNode : public TreeNode {
+class StatementNode : public TreeNode<StatementNode> {
  public:
   StatementKind statementKind;
 
@@ -164,7 +166,7 @@ class AssignmentExpressionNode : public ExpressionNode {
       : ExpressionNode(ExpressionKind::Assign, line) {};
 };
 
-class DeclarationNode : public TreeNode {
+class DeclarationNode : public TreeNode<DeclarationNode> {
  public:
   std::string id;
   std::string type;
@@ -209,7 +211,7 @@ class FunDeclarationNode : public DeclarationNode {
       : DeclarationNode(DeclarationKind::FunD, i, t, line) {}
 };
 
-class ProgramNode : public TreeNode {
+class ProgramNode : public TreeNode<ProgramNode> {
  public:
   std::vector<std::unique_ptr<DeclarationNode>> declarationList;
 
@@ -233,7 +235,7 @@ class Parser {
   TokenType currToken;
   std::string currString;
 
-  TreeNode* start;
+  std::unique_ptr<ProgramNode> start;
   std::string program;
   int position = 0;
   int programLength = 0;
@@ -276,9 +278,9 @@ class Parser {
  public:
   Parser(const std::string& filename, const std::string& prog, int pos,
          int progLong);
-  std::tuple<TreeNode*, std::optional<ParserSyntaxError>> parser(
-      bool print = true);
+  std::tuple<std::unique_ptr<ProgramNode>, std::optional<ParserSyntaxError>>
+  parser(bool print = true);
 
   void print(int depth = 0);
-  TreeNode* parseProgram();
+  std::unique_ptr<ProgramNode> parseProgram();
 };

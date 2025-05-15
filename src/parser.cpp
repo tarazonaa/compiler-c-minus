@@ -9,7 +9,10 @@
 #include <optional>
 #include <vector>
 
-int TreeNode::getLineno() const { return lineno; }
+template <typename Derived>
+int TreeNode<Derived>::getLineno() const {
+  return lineno;
+}
 
 Parser::Parser(const std::string& filename, const std::string& prog, int pos,
                int progLong)
@@ -21,7 +24,7 @@ Parser::Parser(const std::string& filename, const std::string& prog, int pos,
   lexer.globales(program, position, programLength);
 };
 
-TreeNode* Parser::parseProgram() {
+std::unique_ptr<ProgramNode> Parser::parseProgram() {
   auto node = std::make_unique<ProgramNode>(lineno);
 
   while (currToken != TokenType::ENDFILE) {
@@ -29,7 +32,7 @@ TreeNode* Parser::parseProgram() {
         std::unique_ptr<DeclarationNode>(parseDeclaration()));
   }
 
-  return node.release();
+  return node;
 }
 
 CompoundStatementNode* Parser::parseCompoundStatement() {
@@ -324,22 +327,18 @@ void Parser::match(TokenType expected) {
   }
 }
 
-std::tuple<TreeNode*, std::optional<ParserSyntaxError>> Parser::parser(
-    bool imprime) {
+std::tuple<std::unique_ptr<ProgramNode>, std::optional<ParserSyntaxError>>
+Parser::parser(bool imprime) {
   auto [token, string, position] = lexer.getToken(false);
   this->currString = string;
   this->currToken = token;
   this->position = position;
   this->start = parseProgram();
 
-  return {start, std::nullopt};
+  return {std::move(start), std::nullopt};
 }
 
-void Parser::print(int depth) {
-  auto node = this->start;
-
-  node->print(depth + 1);
-}
+void Parser::print(int depth) { start->print(depth + 1); }
 
 inline void indent(int depth) { std::cout << std::string(depth, ' '); }
 
