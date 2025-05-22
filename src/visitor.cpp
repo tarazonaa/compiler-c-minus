@@ -6,11 +6,11 @@
 #include "visitor.hpp"
 
 #include <cassert>
-#include <cmath>
 #include <iostream>
 #include <memory>
 #include <ostream>
 
+#include "errors.hpp"
 #include "parser.hpp"
 #include "semantic.hpp"
 
@@ -252,7 +252,7 @@ void TypeCheckerVisitor::visitImpl(ReturnStatementNode* node) {
           : "void");
 
   if (returnExprType != expectedReturnType) {
-    std::cerr << "Type error: Return type mismatch.\n";
+    throw new SemanticError();
   }
 }
 

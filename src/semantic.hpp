@@ -4,12 +4,11 @@
  * */
 #pragma once
 
-#include <functional>
-#include <iostream>
 #include <memory>
-#include <mutex>
 #include <stdexcept>
+#include <unordered_map>
 
+#include "errors.hpp"
 #include "parser.hpp"
 
 class ProgramNode;
@@ -99,32 +98,4 @@ class Semantic {
  public:
   void analyze(bool imprime = true);
   explicit Semantic(std::unique_ptr<ProgramNode> tree);
-};
-
-class SemanticError : public std::runtime_error {
- private:
-  std::string fileName;
-  int lineno;
-  int positionInLine;
-  std::string line;
-
- public:
-  SemanticError()
-      : std::runtime_error(""),
-        lineno(0),
-        fileName(""),
-        positionInLine(0),
-        line("") {}
-  SemanticError(const std::string& message, const std::string& fileName,
-                int lineno, int positionInLine, const std::string& linea)
-      : std::runtime_error(message),
-        lineno(lineno),
-        fileName(fileName),
-        positionInLine(positionInLine),
-        line(linea) {}
-  std::string format() const;
-  int getLineNo() const;
-  int getPositionInLine() const;
-  const std::string& getLine() const;
-  const std::string& getFileName() const;
 };

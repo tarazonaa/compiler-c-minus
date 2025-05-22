@@ -7,9 +7,9 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <tuple>
 #include <vector>
 
+#include "errors.hpp"
 #include "lexer.hpp"
 
 enum NodeKind { Statement, Expression, Program, Var, Declaration };
@@ -217,16 +217,6 @@ class ProgramNode : public TreeNode<ProgramNode> {
 
   void print(int depth);
   ProgramNode(int line) : TreeNode(NodeKind::Program, line) {};
-};
-
-class ParserSyntaxError : public std::exception {
- private:
-  std::string message;
-
- public:
-  ParserSyntaxError(const std::string& msg) : message(msg) {}
-
-  const char* what() const noexcept override { return message.c_str(); }
 };
 
 class Parser {
