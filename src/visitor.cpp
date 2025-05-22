@@ -22,6 +22,12 @@ Types typeCaster(const std::string& type) {
   }
 }
 
+template <typename DerivedVisitor>
+void Visitor<DerivedVisitor>::updateSemanticAnalyzer(int pos, int lineno) {
+  this->semanticAnalyzer.setPosition(pos);
+  this->semanticAnalyzer.setLineno(lineno);
+}
+
 void SymbolTableVisitor::visitImpl(ProgramNode* node) {
   for (auto& child : node->declarationList) {
     visit(child);
@@ -215,9 +221,9 @@ void TypeCheckerVisitor::visitImpl(VarDeclarationNode* node) {
   Types actualType = symbolTable.getType(node->id);
 
   if (actualType != expectedType) {
-    std::cerr << "Type error: Variable " << node->id
-              << " has an incompatible type.\n"
-              << typesToString2(actualType) << typesToString2(expectedType);
+    throw new SemanticError(
+        "Type error: Variable " + node->id + " has an incompatible type.\n" +
+        typesToString2(actualType) + typesToString2(expectedType));
   }
 }
 

@@ -6,20 +6,23 @@
 
 #include <cxxabi.h>
 
-#include <iostream>
 #include <memory>
-#include <ostream>
-#include <typeinfo>
 
 #include "parser.hpp"
 #include "semantic.hpp"
 
 template <typename DerivedVisitor>
 class Visitor {
+  Semantic& semanticAnalyzer;
+
  public:
+  Visitor(Semantic& sa) : semanticAnalyzer(sa) {};
+  void updateSemanticAnalyzer(int pos, int lineno);
   template <typename Node>
   void visit(std::unique_ptr<Node>& node) {
-    static_cast<DerivedVisitor*>(this)->visitImpl(node.get());
+    updateSemanticAnalyzer(int pos,
+                           int lineno) static_cast<DerivedVisitor*>(this)
+        ->visitImpl(node.get());
   }
 };
 
@@ -27,7 +30,8 @@ class SymbolTableVisitor : public Visitor<SymbolTableVisitor> {
   SymbolTable& symbolTable;
 
  public:
-  explicit SymbolTableVisitor(SymbolTable& st) : symbolTable(st) {};
+  explicit SymbolTableVisitor(SymbolTable& st, Semantic& sa)
+      : symbolTable(st), Visitor<SymbolTableVisitor>(sa) {};
 
   void visitImpl(ProgramNode* node);
   void visitImpl(ExpressionNode* node);
@@ -54,7 +58,8 @@ class TypeCheckerVisitor : public Visitor<TypeCheckerVisitor> {
   SymbolTable& symbolTable;
 
  public:
-  explicit TypeCheckerVisitor(SymbolTable& st) : symbolTable(st) {};
+  explicit TypeCheckerVisitor(SymbolTable& st, Semantic& sa)
+      : symbolTable(st), Visitor<TypeCheckerVisitor>(sa) {};
 
   void visitImpl(ProgramNode* node);
   void visitImpl(ExpressionNode* node);

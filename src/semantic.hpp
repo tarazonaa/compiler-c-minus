@@ -5,10 +5,8 @@
 #pragma once
 
 #include <memory>
-#include <stdexcept>
 #include <unordered_map>
 
-#include "errors.hpp"
 #include "parser.hpp"
 
 class ProgramNode;
@@ -88,6 +86,8 @@ class SymbolTable {
 class Semantic {
   std::unique_ptr<ProgramNode> tree;
   SymbolTable symbolTable;
+  int lineno = 0;
+  int position = 0;
 
  private:
   // Nos movemos a través del árbol con una función de preorden y otra de
@@ -98,4 +98,6 @@ class Semantic {
  public:
   void analyze(bool imprime = true);
   explicit Semantic(std::unique_ptr<ProgramNode> tree);
+  void setLineno(int lineno);
+  void setPosition(int pos);
 };

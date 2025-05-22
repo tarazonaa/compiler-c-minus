@@ -57,6 +57,8 @@ class SemanticError : public std::runtime_error {
         fileName(""),
         positionInLine(0),
         line("") {}
+
+  SemanticError(const std::string& msg) : std::runtime_error(msg) {};
   SemanticError(const std::string& message, const std::string& fileName,
                 int lineno, int positionInLine, const std::string& linea)
       : std::runtime_error(message),

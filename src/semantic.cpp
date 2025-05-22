@@ -11,6 +11,7 @@
 #include <sstream>
 #include <utility>
 
+#include "errors.hpp"
 #include "parser.hpp"
 #include "visitor.hpp"
 
@@ -33,7 +34,7 @@ void Symbols::print() const {
       << "+------------------+-------------------+---------------------+\n";
 
   for (const auto& [name, info] : symbolTable) {
-    std::cout << "| " << std::left << std::setw(15) << name << " | ";
+    std::cout << "| " << std::left << std::setw(16) << name << " | ";
     std::cout << std::left << std::setw(15)
               << "type: " << typesToString(info.type) << std::setw(2) << "|";
 
@@ -43,9 +44,10 @@ void Symbols::print() const {
       lineNumbers << info.lines[i];
     }
 
-    std::cout << std::left << std::setw(18) << lineNumbers.str() << " |\n";
+    std::cout << std::left << std::setw(19) << lineNumbers.str() << " |\n";
   }
-  std::cout << "+----------------------+---------------------+\n";
+  std::cout
+      << "+------------------+-------------------+---------------------+\n";
 }
 
 void Symbols::insertNode(const std::string& name, int lineno) {
@@ -65,19 +67,26 @@ void Symbols::addUsage(const std::string& name, int lineno) {
 /*
  *  Funciones que tienen que ver con el semántico
  * */
+void Semantic::setLineno(int lineno) { lineno = lineno; }
+void Semantic::setPosition(int lineno) { lineno = lineno; }
+
 void Semantic::buildSymbolTable(bool imprime) {
-  SymbolTableVisitor visitor(symbolTable);
+  SymbolTableVisitor visitor(symbolTable, *this);
   visitor.visit(tree);
 }
 void Semantic::typeCheck(bool imprime) {
-  TypeCheckerVisitor visitor(symbolTable);
+  TypeCheckerVisitor visitor(symbolTable, *this);
   visitor.visit(tree);
 }
 
 void Semantic::analyze(bool imprime) {
-  buildSymbolTable(imprime);
-  symbolTable.print();
-  typeCheck(imprime);
+  try {
+    buildSymbolTable(imprime);
+    symbolTable.print();
+    typeCheck(imprime);
+  } catch (SemanticError e) {
+    std::cout << e.what();
+  }
   std::cout << "Se ha logrado el typechecking correctamente." << std::endl;
 }
 
