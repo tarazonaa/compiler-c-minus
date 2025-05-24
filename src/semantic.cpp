@@ -237,3 +237,18 @@ Types SymbolTable::getType(const std::string& name) {
   }
   throw SemanticError("Undeclared variable: " + name);
 }
+
+void SymbolTable::addUsage(const std::string& name, int lineno) {
+  Scope* curr = currScope;
+
+  while (curr != nullptr) {
+    std::cout << "Checking..." + currScope->name << std::endl;
+    if (curr->symbolTable.find(name)) {
+      curr->symbolTable.addUsage(name, lineno);
+      return;
+    }
+    curr = curr->parent;
+  }
+
+  throw SemanticError();
+}

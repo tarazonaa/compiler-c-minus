@@ -32,8 +32,19 @@ void SymbolTableVisitor::visitImpl(ProgramNode* node) {
 }
 
 void SymbolTableVisitor::visitImpl(VarDeclarationNode* node) {
-  if (symbolTable.find(node->id)) {
-    return;
+  Types type = typeCaster(node->type);
+  if (type == Types::VOID) {
+    throw SemanticError(
+        "Cannot declare variable '" + node->id + "' with type void",
+        getSemanticFileName(), getSemanticLineno(), getSemanticPosition(),
+        getSemanticCurrLine());
+  }
+  if (symbolTable.currScope->symbolTable.symbolTable.find(node->id) !=
+      symbolTable.currScope->symbolTable.symbolTable.end()) {
+    throw SemanticError(
+        "Variable '" + node->id + "' is already declared in this scope",
+        getSemanticFileName(), getSemanticLineno(), getSemanticPosition(),
+        getSemanticCurrLine());
   }
   if (node->arraySize) {
     symbolTable.insertNode(node->id, node->getLineno(), typeCaster(node->type),
@@ -52,6 +63,8 @@ std::string typesToString2(Types type) {
 }
 
 void SymbolTableVisitor::visitImpl(FunDeclarationNode* node) {
+  symbolTable.insertNode(node->id, node->getLineno(), typeCaster(node->type),
+                         false);
   Scope* newScope = symbolTable.createScope(node->id);
   symbolTable.currScope->addChild(newScope);
 
@@ -178,7 +191,14 @@ void SymbolTableVisitor::visitImpl(FactorNode* node) {
 }
 
 void SymbolTableVisitor::visitImpl(CallNode* node) {
-  symbolTable.currScope->symbolTable.addUsage(node->id, node->getLineno());
+  try {
+    symbolTable.addUsage(node->id, node->getLineno());
+  } catch (SemanticError) {
+    throw SemanticError(Style::bold_red("Type Error: ") +
+                            Style::cyan(node->id) + Style::red(" is undefined"),
+                        getSemanticFileName(), getSemanticLineno(),
+                        getSemanticPosition(), getSemanticCurrLine());
+  }
   if (node->argsList.size() > 0) {
     for (auto& arg : node->argsList) {
       visit(arg);
@@ -187,7 +207,14 @@ void SymbolTableVisitor::visitImpl(CallNode* node) {
 }
 
 void SymbolTableVisitor::visitImpl(VarNode* node) {
-  symbolTable.currScope->symbolTable.addUsage(node->id, node->getLineno());
+  try {
+    symbolTable.addUsage(node->id, node->getLineno());
+  } catch (const SemanticError& e) {
+    throw SemanticError(Style::bold_red("Type Error: ") +
+                            Style::cyan(node->id) + Style::red(" is undefined"),
+                        getSemanticFileName(), getSemanticLineno(),
+                        getSemanticPosition(), getSemanticCurrLine());
+  }
 }
 
 void SymbolTableVisitor::visitImpl(ParamNode* node) {
