@@ -32,6 +32,8 @@ class TreeNode {
       : nodekind(k), lineno(line), position(pos) {};
 
   int getLineno() const;
+  int getPosition() const;
+  int getLineStart() const;
   virtual ~TreeNode() = default;
 };
 

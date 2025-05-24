@@ -6,10 +6,13 @@
 #include "visitor.hpp"
 
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <ostream>
+#include <string>
 
+#include "colors.hpp"
 #include "errors.hpp"
 #include "parser.hpp"
 #include "semantic.hpp"
@@ -20,12 +23,6 @@ Types typeCaster(const std::string& type) {
   } else {
     return Types::VOID;
   }
-}
-
-template <typename DerivedVisitor>
-void Visitor<DerivedVisitor>::updateSemanticAnalyzer(int pos, int lineno) {
-  this->semanticAnalyzer.setPosition(pos);
-  this->semanticAnalyzer.setLineno(lineno);
 }
 
 void SymbolTableVisitor::visitImpl(ProgramNode* node) {
@@ -135,7 +132,10 @@ void SymbolTableVisitor::visitImpl(StatementNode* node) {
   } else if (auto ret = dynamic_cast<ReturnStatementNode*>(node)) {
     visitImpl(ret);
   } else {
-    std::cerr << "Unknown StatementNode type\n";
+    throw SemanticError(
+        Color::bold_red + "FATAL ERROR: " + Color::reset + "Invalid node type",
+        getSemanticFileName(), getSemanticLineno(), getSemanticPosition(),
+        getSemanticCurrLine());
   }
 }
 
@@ -221,20 +221,31 @@ void TypeCheckerVisitor::visitImpl(VarDeclarationNode* node) {
   Types actualType = symbolTable.getType(node->id);
 
   if (actualType != expectedType) {
-    throw new SemanticError(
-        "Type error: Variable " + node->id + " has an incompatible type.\n" +
-        typesToString2(actualType) + typesToString2(expectedType));
+    throw SemanticError(
+        Style::bold_red("Type Error:") + " Variable " +
+            Style::yellow(node->id) +
+            " has an incompatible type.\n  Expected: " +
+            Style::blue(typesToString2(actualType)) +
+            ", but got: " + Style::red(typesToString2(expectedType)) + "\n",
+        getSemanticFileName(), getSemanticLineno(), getSemanticPosition(),
+        getSemanticCurrLine());
   }
 }
 
 void TypeCheckerVisitor::visitImpl(FunDeclarationNode* node) {
   Types expectedReturnType = typeCaster(node->type);
+  currentReturnType = expectedReturnType;
+
+  Scope* oldScope = symbolTable.currScope;
+  symbolTable.currScope = symbolTable.getScope(node->id);
 
   for (auto& param : node->params) {
     visit(param);
   }
 
   visit(node->compoundStatement);
+
+  symbolTable.currScope = oldScope;
 }
 
 void TypeCheckerVisitor::visitImpl(CompoundStatementNode* node) {
@@ -252,13 +263,8 @@ void TypeCheckerVisitor::visitImpl(ReturnStatementNode* node) {
 
   Types returnExprType =
       expressionTypeToSemantic(node->expression->expressionType);
-  Types expectedReturnType = typeCaster(
-      expressionTypeToSemantic(node->expression->expressionType) == Types::INT
-          ? "int"
-          : "void");
-
-  if (returnExprType != expectedReturnType) {
-    throw new SemanticError();
+  if (returnExprType != currentReturnType) {
+    throw SemanticError();
   }
 }
 
@@ -321,7 +327,13 @@ void TypeCheckerVisitor::visitImpl(CallNode* node) {
   }
 }
 
-void TypeCheckerVisitor::visitImpl(VarNode* node) {}
+void TypeCheckerVisitor::visitImpl(VarNode* node) {
+  if (!symbolTable.find(node->id)) {
+    throw SemanticError("Undeclared variable: " + node->id + "\n",
+                        getSemanticFileName(), getSemanticLineno(),
+                        getSemanticPosition(), getSemanticCurrLine());
+  }
+}
 
 void TypeCheckerVisitor::visitImpl(ParamNode* node) {}
 
@@ -364,8 +376,13 @@ void TypeCheckerVisitor::visitImpl(SimpleExpressionNode* node) {
           : Types::VOID;
 
   if (leftType != rightType) {
-    std::cerr << "Type error: Incompatible types in simple expression.\n";
+    throw SemanticError(
+        "Type error: Incompatible types in simple expression.\n",
+        getSemanticFileName(), getSemanticLineno(), getSemanticPosition(),
+        getSemanticCurrLine());
   }
+
+  node->expressionType = ExpressionType::Integer;
 }
 
 void TypeCheckerVisitor::visitImpl(AdditiveExpressionNode* node) {
@@ -402,6 +419,17 @@ void TypeCheckerVisitor::visitImpl(SelectionStatementNode* node) {
   visit(node->condition);
   Types conditionType =
       expressionTypeToSemantic(node->condition->expressionType);
+
+  if (conditionType != Types::INT) {
+    throw SemanticError(
+        Color::bold_red + "Type Error:" + Color::reset +
+            "Condition expression in if statement must have a return "
+            "type of" +
+            Color::blue + "integer" + Color::reset + ", got: " + Color::red +
+            typesToString2(conditionType) + Color::reset + "\n",
+        getSemanticFileName(), getSemanticLineno(), getSemanticPosition(),
+        getSemanticCurrLine());
+  }
 
   visit(node->statement);
 

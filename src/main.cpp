@@ -10,6 +10,8 @@
 #include <string>
 
 // Importes de folder include/
+#include "errors.cpp"
+#include "errors.hpp"
 #include "lexer.cpp"
 #include "lexer.hpp"
 #include "parser.cpp"
@@ -27,7 +29,9 @@ int main() {
 
   // Creamos variable linea para iterar sobre el archivo.
   std::string line;
+  std::vector<std::string> lines;
   while (std::getline(archivo, line)) {
+    lines.push_back(line);
     prog += line + '\n';
   }
 
@@ -42,7 +46,7 @@ int main() {
     std::cerr << "Parsing failed: " << error->what() << std::endl;
   }
 
-  Semantic semantic(std::move(tree));
+  Semantic semantic(std::move(tree), fileName, lines);
 
   // Helper function que hace todo el análisis (symbol table y type checking)
   semantic.analyze();

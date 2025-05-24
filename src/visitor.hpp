@@ -13,16 +13,24 @@
 
 template <typename DerivedVisitor>
 class Visitor {
-  Semantic& semanticAnalyzer;
+  Semantic& semantic;
 
  public:
-  Visitor(Semantic& sa) : semanticAnalyzer(sa) {};
+  Visitor<DerivedVisitor>(Semantic& sem) : semantic(sem){};
   void updateSemanticAnalyzer(int pos, int lineno);
+
+  int getSemanticLineno() { return semantic.getLineno(); }
+  int getSemanticPosition() { return semantic.getPosition(); }
+  int getSemanticLineStart() { return semantic.getLineStart(); }
+  const std::string& getSemanticCurrLine() { return semantic.getCurrLine(); }
+  const std::string& getSemanticFileName() { return semantic.getFileName(); }
+
   template <typename Node>
   void visit(std::unique_ptr<Node>& node) {
-    updateSemanticAnalyzer(int pos,
-                           int lineno) static_cast<DerivedVisitor*>(this)
-        ->visitImpl(node.get());
+    semantic.setPosition(node->getPosition());
+    semantic.setLineno(node->getLineno());
+    semantic.setLineStart(node->getLineStart());
+    static_cast<DerivedVisitor*>(this)->visitImpl(node.get());
   }
 };
 
@@ -30,8 +38,8 @@ class SymbolTableVisitor : public Visitor<SymbolTableVisitor> {
   SymbolTable& symbolTable;
 
  public:
-  explicit SymbolTableVisitor(SymbolTable& st, Semantic& sa)
-      : symbolTable(st), Visitor<SymbolTableVisitor>(sa) {};
+  explicit SymbolTableVisitor(SymbolTable& st, Semantic& sem)
+      : symbolTable(st), Visitor<SymbolTableVisitor>(sem) {};
 
   void visitImpl(ProgramNode* node);
   void visitImpl(ExpressionNode* node);
@@ -55,11 +63,12 @@ class SymbolTableVisitor : public Visitor<SymbolTableVisitor> {
 };
 
 class TypeCheckerVisitor : public Visitor<TypeCheckerVisitor> {
+  Types currentReturnType;
   SymbolTable& symbolTable;
 
  public:
-  explicit TypeCheckerVisitor(SymbolTable& st, Semantic& sa)
-      : symbolTable(st), Visitor<TypeCheckerVisitor>(sa) {};
+  explicit TypeCheckerVisitor(SymbolTable& st, Semantic& sem)
+      : symbolTable(st), Visitor<TypeCheckerVisitor>(sem) {};
 
   void visitImpl(ProgramNode* node);
   void visitImpl(ExpressionNode* node);

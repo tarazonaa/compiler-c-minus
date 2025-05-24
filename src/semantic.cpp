@@ -10,7 +10,9 @@
 #include <memory>
 #include <sstream>
 #include <utility>
+#include <vector>
 
+#include "colors.hpp"
 #include "errors.hpp"
 #include "parser.hpp"
 #include "visitor.hpp"
@@ -18,6 +20,8 @@
 std::string typesToString(Types type) {
   if (type == Types::INT) {
     return "int";
+  } else if (type == Types::BUILTIN) {
+    return "builtin";
   }
   return "void";
 }
@@ -25,29 +29,88 @@ std::string typesToString(Types type) {
 /*
  *  Functiones para las tablas de simbolos simples
  * */
+std::string padAndStyle(
+    const std::string& content, int width,
+    const std::function<std::string(const std::string&)>& styleFn) {
+  std::ostringstream out;
+  out << std::left << std::setw(width) << content;
+  return styleFn(out.str());
+}
+
+std::vector<std::string> wrapLines(const std::string& str, size_t width) {
+  std::vector<std::string> result;
+  std::istringstream stream(str);
+  std::string token;
+  std::string line;
+  while (std::getline(stream, token, ',')) {
+    token.erase(0, token.find_first_not_of(" "));  // trim leading space
+    std::string addition = (line.empty() ? "" : ", ") + token;
+    if (line.length() + addition.length() > width) {
+      result.push_back(line);
+      line = token;
+    } else {
+      line += addition;
+    }
+  }
+  if (!line.empty()) result.push_back(line);
+  return result;
+}
+
 void Symbols::print() const {
-  std::cout
-      << "+------------------+-------------------+---------------------+\n";
-  std::cout
-      << "| Symbol           |   Types           | Line Numbers        |\n";
-  std::cout
-      << "+------------------+-------------------+---------------------+\n";
+  using std::left;
+  using std::setw;
+
+  const std::string sep =
+      "├────────────────┼────────────┼──────────┼─────────┼────────────────┤";
+  const std::string top =
+      "╭────────────────────────── Symbol Table ───────────────────────────╮";
+  const std::string bot =
+      "╰────────────────┴────────────┴──────────┴─────────┴────────────────╯";
+
+  std::cout << Style::bold(top) << "\n";
+  std::cout << "│ " << padAndStyle("Name", 14, Style::bold) << " │ "
+            << padAndStyle("Type", 10, Style::bold) << " │ "
+            << padAndStyle("Scope", 8, Style::bold) << " │ "
+            << padAndStyle("Array", 7, Style::bold) << " │ "
+            << padAndStyle("Lines", 14, Style::bold) << " │\n";
+  std::cout << Style::gray(sep) << "\n";
 
   for (const auto& [name, info] : symbolTable) {
-    std::cout << "| " << std::left << std::setw(16) << name << " | ";
-    std::cout << std::left << std::setw(15)
-              << "type: " << typesToString(info.type) << std::setw(2) << "|";
-
-    std::stringstream lineNumbers;
+    std::stringstream lines;
     for (size_t i = 0; i < info.lines.size(); ++i) {
-      if (i > 0) lineNumbers << ", ";
-      lineNumbers << info.lines[i];
+      lines << info.lines[i];
+      if (i < info.lines.size() - 1) lines << ", ";
     }
 
-    std::cout << std::left << std::setw(19) << lineNumbers.str() << " |\n";
+    std::vector<std::string> wrappedLines = wrapLines(lines.str(), 14);
+    size_t numLines = std::max<size_t>(1, wrappedLines.size());
+
+    for (size_t i = 0; i < numLines; ++i) {
+      std::cout << "│ "
+                << (i == 0 ? padAndStyle(name.empty() ? "<anon>" : name, 14,
+                                         Style::cyan)
+                           : std::string(14, ' '))
+                << " │ "
+                << (i == 0
+                        ? padAndStyle(typesToString(info.type), 10, Style::blue)
+                        : std::string(10, ' '))
+                << " │ "
+                << (i == 0 ? padAndStyle(info.scope.empty() ? "-" : info.scope,
+                                         8, Style::yellow)
+                           : std::string(8, ' '))
+                << " │ "
+                << (i == 0
+                        ? padAndStyle(info.isArray ? "true" : "false", 7,
+                                      info.isArray ? Style::green : Style::red)
+                        : std::string(7, ' '))
+                << " │ "
+                << padAndStyle(wrappedLines.empty() ? "-" : wrappedLines[i], 14,
+                               Style::gray)
+                << " │\n";
+    }
   }
-  std::cout
-      << "+------------------+-------------------+---------------------+\n";
+
+  std::cout << Style::bold(bot) << "\n";
 }
 
 void Symbols::insertNode(const std::string& name, int lineno) {
@@ -67,8 +130,9 @@ void Symbols::addUsage(const std::string& name, int lineno) {
 /*
  *  Funciones que tienen que ver con el semántico
  * */
-void Semantic::setLineno(int lineno) { lineno = lineno; }
-void Semantic::setPosition(int lineno) { lineno = lineno; }
+void Semantic::setLineno(int line) { lineno = line; }
+void Semantic::setPosition(int pos) { position = pos; }
+void Semantic::setLineStart(int ls) { lineStart = ls; }
 
 void Semantic::buildSymbolTable(bool imprime) {
   SymbolTableVisitor visitor(symbolTable, *this);
@@ -84,13 +148,15 @@ void Semantic::analyze(bool imprime) {
     buildSymbolTable(imprime);
     symbolTable.print();
     typeCheck(imprime);
-  } catch (SemanticError e) {
-    std::cout << e.what();
+    std::cout << "Se ha logrado el typechecking correctamente." << std::endl;
+  } catch (const SemanticError& e) {
+    std::cout << e.format() << std::endl;
   }
-  std::cout << "Se ha logrado el typechecking correctamente." << std::endl;
 }
 
-Semantic::Semantic(std::unique_ptr<ProgramNode> tree) : tree(std::move(tree)) {
+Semantic::Semantic(std::unique_ptr<ProgramNode> tree,
+                   const std::string& fileName, std::vector<std::string> lines)
+    : tree(std::move(tree)), fileName(fileName), lines(lines) {
   symbolTable = SymbolTable();
 }
 
@@ -98,6 +164,8 @@ SymbolTable::SymbolTable() {
   scopes.push_back(std::make_unique<Scope>("__global"));
   globalScope = scopes.back().get();
   currScope = globalScope;
+  currScope->insertNode("output", 0, Types::BUILTIN);
+  currScope->insertNode("input", 0, Types::BUILTIN);
 }
 
 void SymbolTable::insertNode(const std::string& name, int lineno, Types type) {
@@ -123,7 +191,14 @@ void SymbolTable::print() const {
 }
 
 bool SymbolTable::find(const std::string& name) const {
-  return currScope->symbolTable.find(name);
+  Scope* scope = currScope;
+  while (scope != nullptr) {
+    if (scope->symbolTable.find(name)) {
+      return true;
+    }
+    scope = scope->parent;
+  }
+  return false;
 }
 
 /*
@@ -134,7 +209,12 @@ Scope::Scope(const std::string& name) : name(name) {
 }
 
 void Scope::printScope() {
-  std::cout << "Imrpimiendo scope: " << name << std::endl;
+  std::cout << Style::cyan("Imprimiendo scope: ") << Style::italic(name)
+            << std::endl;
+  if (parent != nullptr) {
+    std::cout << Style::yellow("Scope padre: ") << Style::italic(parent->name)
+              << std::endl;
+  }
   symbolTable.print();
 }
 
@@ -148,11 +228,12 @@ void Scope::addUsage(const std::string& name, int lineno) {
 }
 
 Types SymbolTable::getType(const std::string& name) {
-  Types type = currScope->symbolTable.symbolTable[name].type;
-  if (type == Types::INT) {
-    return type;
-  } else {
-    std::cerr << "Cannot index type of " << name << std::endl;
+  Scope* scope = currScope;
+  while (scope != nullptr) {
+    if (scope->symbolTable.find(name)) {
+      return scope->symbolTable.symbolTable.at(name).type;
+    }
+    scope = scope->parent;
   }
-  return Types::VOID;
+  throw SemanticError("Undeclared variable: " + name);
 }

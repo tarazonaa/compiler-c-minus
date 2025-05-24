@@ -1,5 +1,6 @@
 /*
- * Esta es el header file donde se declararán los diferentes tipos de errores.
+ *  Copyright (c) 2025 Andres Tarazona Solloa <andres.tara.so@gmail.com>
+ *  Este es el header file de errores.
  * */
 #pragma once
 #include <stdexcept>

@@ -14,6 +14,15 @@ int TreeNode<Derived>::getLineno() const {
   return lineno;
 }
 
+template <typename Derived>
+int TreeNode<Derived>::getLineStart() const {
+  return linestart;
+}
+template <typename Derived>
+int TreeNode<Derived>::getPosition() const {
+  return position;
+}
+
 Parser::Parser(const std::string& filename, const std::string& prog, int pos,
                int progLong)
     : fileName(filename),
