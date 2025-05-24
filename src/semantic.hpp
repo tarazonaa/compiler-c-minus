@@ -30,7 +30,7 @@ class Symbols {
   void insertNode(const std::string& name, int lineno);
   void addUsage(const std::string& name, int lineno);
   bool find(const std::string& name) const;
-  void print() const;
+  void print(const std::string& name) const;
 
   Symbols& operator+=(const std::pair<std::string, int>& decl) {
     addUsage(decl.first, decl.second);

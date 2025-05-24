@@ -9,6 +9,8 @@
 #include <optional>
 #include <vector>
 
+#include "lexer.hpp"
+
 template <typename Derived>
 int TreeNode<Derived>::getLineno() const {
   return lineno;
@@ -324,6 +326,9 @@ DeclarationNode* Parser::parseDeclaration() {
 }
 
 void Parser::match(TokenType expected) {
+  if (currToken == TokenType::ID) {
+    mostRecentId = currString;
+  }
   if (currToken == expected) {
     auto [token, string, position] = lexer.getToken(false);
     this->currString = string;

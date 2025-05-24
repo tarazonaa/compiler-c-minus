@@ -207,6 +207,9 @@ void SymbolTableVisitor::visitImpl(CallNode* node) {
 }
 
 void SymbolTableVisitor::visitImpl(VarNode* node) {
+  if (node->id.empty()) {
+    std::cout << "NODE IS EMPTY" << std::endl;
+  }
   try {
     symbolTable.addUsage(node->id, node->getLineno());
   } catch (const SemanticError& e) {

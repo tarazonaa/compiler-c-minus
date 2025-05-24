@@ -56,7 +56,7 @@ std::vector<std::string> wrapLines(const std::string& str, size_t width) {
   return result;
 }
 
-void Symbols::print() const {
+void Symbols::print(const std::string& scope) const {
   using std::left;
   using std::setw;
 
@@ -86,27 +86,26 @@ void Symbols::print() const {
     size_t numLines = std::max<size_t>(1, wrappedLines.size());
 
     for (size_t i = 0; i < numLines; ++i) {
-      std::cout << "│ "
-                << (i == 0 ? padAndStyle(name.empty() ? "<anon>" : name, 14,
-                                         Style::cyan)
-                           : std::string(14, ' '))
-                << " │ "
-                << (i == 0
-                        ? padAndStyle(typesToString(info.type), 10, Style::blue)
-                        : std::string(10, ' '))
-                << " │ "
-                << (i == 0 ? padAndStyle(info.scope.empty() ? "-" : info.scope,
-                                         8, Style::yellow)
-                           : std::string(8, ' '))
-                << " │ "
-                << (i == 0
-                        ? padAndStyle(info.isArray ? "true" : "false", 7,
-                                      info.isArray ? Style::green : Style::red)
-                        : std::string(7, ' '))
-                << " │ "
-                << padAndStyle(wrappedLines.empty() ? "-" : wrappedLines[i], 14,
-                               Style::gray)
-                << " │\n";
+      std::cout
+          << "│ "
+          << (i == 0
+                  ? padAndStyle(name.empty() ? "<anon>" : name, 14, Style::cyan)
+                  : std::string(14, ' '))
+          << " │ "
+          << (i == 0 ? padAndStyle(typesToString(info.type), 10, Style::blue)
+                     : std::string(10, ' '))
+          << " │ "
+          << (i == 0
+                  ? padAndStyle(scope.empty() ? "-" : scope, 8, Style::yellow)
+                  : std::string(8, ' '))
+          << " │ "
+          << (i == 0 ? padAndStyle(info.isArray ? "true" : "false", 7,
+                                   info.isArray ? Style::green : Style::red)
+                     : std::string(7, ' '))
+          << " │ "
+          << padAndStyle(wrappedLines.empty() ? "-" : wrappedLines[i], 14,
+                         Style::gray)
+          << " │\n";
     }
   }
 
@@ -215,7 +214,7 @@ void Scope::printScope() {
     std::cout << Style::yellow("Scope padre: ") << Style::italic(parent->name)
               << std::endl;
   }
-  symbolTable.print();
+  symbolTable.print(name);
 }
 
 void Scope::insertNode(const std::string& name, int lineno, Types type) {
@@ -242,7 +241,6 @@ void SymbolTable::addUsage(const std::string& name, int lineno) {
   Scope* curr = currScope;
 
   while (curr != nullptr) {
-    std::cout << "Checking..." + currScope->name << std::endl;
     if (curr->symbolTable.find(name)) {
       curr->symbolTable.addUsage(name, lineno);
       return;
