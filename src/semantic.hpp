@@ -117,4 +117,5 @@ class Semantic {
   int getPosition() const { return position; }
   int getLineStart() const { return position; }
   const std::string& getCurrLine() const { return lines[lineno - 1]; }
+  std::unique_ptr<ProgramNode> getTree() { return std::move(tree); };
 };
