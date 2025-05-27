@@ -10,6 +10,8 @@
 #include <string>
 
 // Importes de folder include/
+#include "codegen.cpp"
+#include "codegen.hpp"
 #include "errors.cpp"
 #include "errors.hpp"
 #include "lexer.cpp"
@@ -50,6 +52,10 @@ int main() {
 
   // Helper function que hace todo el análisis (symbol table y type checking)
   semantic.analyze();
+
+  CodeGenerator codegen(semantic);
+
+  codegen.generate();
 
   return 0;
 }
