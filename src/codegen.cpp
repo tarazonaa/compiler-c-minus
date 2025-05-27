@@ -8,7 +8,9 @@
 
 #include <fstream>
 #include <memory>
+#include <string>
 
+#include "parser.hpp"
 #include "semantic.hpp"
 
 CodeGenerator::CodeGenerator(Semantic& semantic) : semantic(semantic) {};
@@ -37,13 +39,23 @@ void CodeGenerator::visitImpl(ProgramNode* node) {
   }
 }
 
-void CodeGenerator::visitImpl(VarDeclarationNode* node) {}
-
-std::string typesToString2(Types type) {
-  if (type == Types::INT) {
-    return "int";
+std::string nodeToMIPS(VarDeclarationNode* node) {
+  std::string finalString;
+  if (node->type == "int") {
+    finalString.append(".space ");
   }
-  return "void";
+
+  if (node->arraySize) {
+    finalString.append(std::to_string(4 * node->arraySize.value()));
+  } else {
+    finalString.append("4");
+  }
+
+  return finalString;
+}
+
+void CodeGenerator::visitImpl(VarDeclarationNode* node) {
+  fileToWrite << node->id << ": " << nodeToMIPS(node) << std::endl;
 }
 
 void CodeGenerator::visitImpl(FunDeclarationNode* node) {}
