@@ -1,2 +1,79 @@
 .data
-x: .space 4
+x: .space 8
+
+.text
+.globl main
+main:
+  jal main_entry
+  # Allocate local var 'x' at 0($fp)
+
+gcd_entry:
+  move $fp, $sp
+  sw $fp, 0($sp)
+  addiu $sp, $sp, -4
+  sw $ra, 0($sp)
+  addiu $sp, $sp, -4
+  lw $t0, 12($fp)
+  move $t1, $t0
+  add $t0, $t1, $t0
+  bne $t0, $zero, true0
+  lw $t0, 8($fp)
+  move $t1, $t0
+  lw $t0, 12($fp)
+  move $t1, $t0
+  lw $t0, 12($fp)
+  move $t1, $t0
+  lw $t0, 12($fp)
+  mul $t0, $t1, $t0
+  mul $t0, $t1, $t0
+  add $t0, $t1, $t0
+  sw $t0, 0($sp)
+  addiu $sp, $sp, -4
+  lw $t0, 12($fp)
+  sw $t0, 0($sp)
+  addiu $sp, $sp, -4
+  jal gcd_entry
+  move $t0, $v0
+  move $v0, $t0
+  j endif0
+true0:
+  lw $t0, 8($fp)
+  move $v0, $t0
+endif0:
+  lw $ra, 4($sp)
+  lw $fp, 0($sp)
+  addiu $sp, $sp, 8
+  jr $ra
+
+main_entry:
+  move $fp, $sp
+  sw $fp, 0($sp)
+  addiu $sp, $sp, -4
+  sw $ra, 0($sp)
+  addiu $sp, $sp, -4
+  # Allocate local var 'x' at -4($fp)
+  # Allocate local var 'y' at -8($fp)
+  li $v0, 5
+  syscall
+  move $t0, $v0
+  sw $t0, -4($fp)
+  li $v0, 5
+  syscall
+  move $t0, $v0
+  sw $t0, -8($fp)
+  lw $t0, -8($fp)
+  sw $t0, 0($sp)
+  addiu $sp, $sp, -4
+  lw $t0, -4($fp)
+  sw $t0, 0($sp)
+  addiu $sp, $sp, -4
+  jal gcd_entry
+  move $t0, $v0
+  move $a0, $t0
+  li $v0, 1
+  syscall
+  lw $ra, 4($sp)
+  lw $fp, 0($sp)
+  addiu $sp, $sp, 8
+  li $v0, 10
+  syscall

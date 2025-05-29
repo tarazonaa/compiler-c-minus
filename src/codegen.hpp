@@ -5,12 +5,19 @@
 #pragma once
 #include <fstream>
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "parser.hpp"
 #include "semantic.hpp"
 class CodeGenerator {
   Semantic& semantic;
   std::ofstream fileToWrite;
+  bool isInGlobals;
+  std::unordered_set<std::string> emittedGlobals;
+  std::unordered_map<std::string, int> offsets;
+  std::unordered_map<std::string, int> localOffsets;
+  int currentStackOffset = 0;
 
  public:
   CodeGenerator(Semantic& semantic);
@@ -19,7 +26,7 @@ class CodeGenerator {
   void setup();
   void writeToFile(std::string& content);
   template <typename Node>
-  void generateForNode(std::unique_ptr<Node> tree);
+  void generateForNode(Node* tree);
 
   // Visitors como en el visitor.hpp
   void visitImpl(ProgramNode* node);
