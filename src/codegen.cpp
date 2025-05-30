@@ -132,13 +132,15 @@ void CodeGenerator::visitImpl(FunDeclarationNode* node) {
   if (node->id == "main") {
     fileToWrite << "  lw $ra, 4($sp)\n";
     fileToWrite << "  lw $fp, 0($sp)\n";
-    fileToWrite << "  addiu $sp, $sp, 8\n";
+    fileToWrite << "  addiu $sp, $sp, " << std::to_string(totalArgsBytes)
+                << "\n";
     fileToWrite << "  li $v0, 10\n";
     fileToWrite << "  syscall\n";
   } else {
     fileToWrite << "  lw $ra, 4($sp)\n";
     fileToWrite << "  lw $fp, 0($sp)\n";
-    fileToWrite << "  addiu $sp, $sp, 8\n";
+    fileToWrite << "  addiu $sp, $sp, " << std::to_string(totalArgsBytes)
+                << "\n";
     fileToWrite << "  jr $ra\n";
   }
 }
